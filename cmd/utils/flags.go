@@ -148,6 +148,14 @@ var (
 		Usage:    "Ethereum mainnet",
 		Category: flags.EthCategory,
 	}
+	PulseChainFlag = &cli.BoolFlag{
+		Name:  "pulsechain",
+		Usage: "PulseChain mainnet",
+	}
+	PulseChainTestnetFlag = &cli.BoolFlag{
+		Name:  "pulsechain-testnet",
+		Usage: "PulseChain testnet",
+	}
 	SepoliaFlag = &cli.BoolFlag{
 		Name:     "sepolia",
 		Usage:    "Sepolia network: pre-configured proof-of-stake test network",
@@ -971,12 +979,16 @@ Please note that --` + MetricsHTTPFlag.Name + ` must be set to start the server.
 var (
 	// TestnetFlags is the flag group of all built-in supported testnets.
 	TestnetFlags = []cli.Flag{
+		PulseChainTestnetFlag,
 		SepoliaFlag,
 		HoleskyFlag,
 		HoodiFlag,
 	}
 	// NetworkFlags is the flag group of all built-in supported networks.
-	NetworkFlags = append([]cli.Flag{MainnetFlag}, TestnetFlags...)
+	NetworkFlags = append([]cli.Flag{
+		MainnetFlag,
+		PulseChainFlag,
+	}, TestnetFlags...)
 
 	// DatabaseFlags is the flag group of all database flags.
 	DatabaseFlags = []cli.Flag{
@@ -1001,6 +1013,12 @@ var (
 // then a subdirectory of the specified datadir will be used.
 func MakeDataDir(ctx *cli.Context) string {
 	if path := ctx.String(DataDirFlag.Name); path != "" {
+		if ctx.Bool(PulseChainFlag.Name) {
+			return filepath.Join(path, "pulsechain")
+		}
+		if ctx.Bool(PulseChainTestnetFlag.Name) {
+			return filepath.Join(path, "pulsechain-testnet")
+		}
 		if ctx.Bool(SepoliaFlag.Name) {
 			return filepath.Join(path, "sepolia")
 		}
@@ -1066,6 +1084,10 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 			return // Already set by config file, don't apply defaults.
 		}
 		switch {
+		case ctx.Bool(PulseChainFlag.Name):
+			urls = params.PulseChainBootnodes
+		case ctx.Bool(PulseChainTestnetFlag.Name):
+			urls = params.PulseChainTestnetBootnodes
 		case ctx.Bool(HoleskyFlag.Name):
 			urls = params.HoleskyBootnodes
 		case ctx.Bool(SepoliaFlag.Name):
@@ -1430,6 +1452,10 @@ func SetDataDir(ctx *cli.Context, cfg *node.Config) {
 		cfg.DataDir = ctx.String(DataDirFlag.Name)
 	case ctx.Bool(DeveloperFlag.Name):
 		cfg.DataDir = "" // unless explicitly requested, use memory databases
+	case ctx.Bool(PulseChainFlag.Name) && cfg.DataDir == node.DefaultDataDir():
+		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "pulsechain")
+	case ctx.Bool(PulseChainTestnetFlag.Name) && cfg.DataDir == node.DefaultDataDir():
+		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "pulsechain-testnet")
 	case ctx.Bool(SepoliaFlag.Name) && cfg.DataDir == node.DefaultDataDir():
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "sepolia")
 	case ctx.Bool(HoleskyFlag.Name) && cfg.DataDir == node.DefaultDataDir():
@@ -1562,7 +1588,7 @@ func setRequiredBlocks(ctx *cli.Context, cfg *ethconfig.Config) {
 // SetEthConfig applies eth-related command line flags to the config.
 func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	// Avoid conflicting network flags, don't allow network id override on preset networks
-	flags.CheckExclusive(ctx, MainnetFlag, DeveloperFlag, SepoliaFlag, HoleskyFlag, HoodiFlag, NetworkIdFlag)
+	flags.CheckExclusive(ctx, MainnetFlag, PulseChainFlag, PulseChainTestnetFlag, DeveloperFlag, SepoliaFlag, HoleskyFlag, HoodiFlag, NetworkIdFlag)
 	flags.CheckExclusive(ctx, DeveloperFlag, ExternalSignerFlag) // Can't use both ephemeral unlocked and external signer
 
 	// Set configurations from CLI flags
@@ -1731,6 +1757,18 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	case ctx.Bool(MainnetFlag.Name):
 		cfg.NetworkId = 1
 		cfg.Genesis = core.DefaultGenesisBlock()
+		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
+	case ctx.Bool(PulseChainFlag.Name):
+		if !ctx.IsSet(NetworkIdFlag.Name) {
+			cfg.NetworkId = 369
+		}
+		cfg.Genesis = core.DefaultPulseChainGenesisBlock()
+		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
+	case ctx.Bool(PulseChainTestnetFlag.Name):
+		if !ctx.IsSet(NetworkIdFlag.Name) {
+			cfg.NetworkId = 942
+		}
+		cfg.Genesis = core.DefaultPulseChainTestnetGenesisBlock()
 		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
 	case ctx.Bool(HoleskyFlag.Name):
 		cfg.NetworkId = 17000
@@ -2157,6 +2195,10 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 	switch {
 	case ctx.Bool(MainnetFlag.Name):
 		genesis = core.DefaultGenesisBlock()
+	case ctx.Bool(PulseChainFlag.Name):
+		genesis = core.DefaultPulseChainGenesisBlock()
+	case ctx.Bool(PulseChainTestnetFlag.Name):
+		genesis = core.DefaultPulseChainTestnetGenesisBlock()
 	case ctx.Bool(HoleskyFlag.Name):
 		genesis = core.DefaultHoleskyGenesisBlock()
 	case ctx.Bool(SepoliaFlag.Name):
