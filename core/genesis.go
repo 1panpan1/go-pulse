@@ -346,6 +346,13 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, triedb *triedb.Database, g
 		}
 		return genesis.Config, block.Hash(), nil, nil
 	}
+	// Assume mainnet chainId first
+	// Note: The `genesis` argument will be one of:
+	// - nil: if running without the `init` command and without providing a network flag (--pulsechain, --ropsten, etc..)
+	// - defaulted: when a network flag is provided (--pulsechain, --ropsten, etc..), genesis will hold the defaults
+	// - custom: if running with the `init` command supplying a custom genesis.json file, genesis will hold the file contents
+	chainId := params.MainnetChainConfig.ChainID.Uint64()
+
 	// The genesis block has already been committed previously. Verify that the
 	// provided genesis with chain overrides matches the existing one, and update
 	// the stored chain config if necessary.
@@ -357,6 +364,9 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, triedb *triedb.Database, g
 		if hash := genesis.ToBlock().Hash(); hash != ghash {
 			return nil, common.Hash{}, nil, &GenesisMismatchError{ghash, hash}
 		}
+		if genesis.Config.ChainID != nil {
+			chainId = genesis.Config.ChainID.Uint64()
+		}
 	}
 	// Check config compatibility and write the config. Compatibility errors
 	// are returned to the caller unless we're already at block zero.
@@ -364,7 +374,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, triedb *triedb.Database, g
 	if head == nil {
 		return nil, common.Hash{}, nil, errors.New("missing head header")
 	}
-	newCfg := genesis.chainConfigOrDefault(ghash, storedCfg)
+	newCfg := genesis.chainConfigOrDefault(ghash, storedCfg, chainId)
 	if err := overrides.apply(newCfg); err != nil {
 		return nil, common.Hash{}, nil, err
 	}
@@ -426,12 +436,19 @@ func LoadChainConfig(db ethdb.Database, genesis *Genesis) (cfg *params.ChainConf
 // chainConfigOrDefault retrieves the attached chain configuration. If the genesis
 // object is null, it returns the default chain configuration based on the given
 // genesis hash, or the locally stored config if it's not a pre-defined network.
-func (g *Genesis) chainConfigOrDefault(ghash common.Hash, stored *params.ChainConfig) *params.ChainConfig {
+func (g *Genesis) chainConfigOrDefault(ghash common.Hash, stored *params.ChainConfig, chainId uint64) *params.ChainConfig {
 	switch {
 	case g != nil:
 		return g.Config
 	case ghash == params.MainnetGenesisHash:
-		return params.MainnetChainConfig
+		switch chainId {
+		case params.PulseChainConfig.ChainID.Uint64():
+			return params.PulseChainConfig
+		case params.PulseChainTestnetConfig.ChainID.Uint64():
+			return params.PulseChainTestnetConfig
+		default:
+			return params.MainnetChainConfig
+		}
 	case ghash == params.HoleskyGenesisHash:
 		return params.HoleskyChainConfig
 	case ghash == params.SepoliaGenesisHash:
