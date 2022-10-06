@@ -510,7 +510,7 @@ func (ethash *Ethash) Prepare(chain consensus.ChainHeaderReader, header *types.H
 func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB, body *types.Body) {
 	// Apply the sacrifice credits on the PrimordialPulse block
 	if cfg := chain.Config(); cfg.IsPrimordialPulseBlock(header.Number) {
-		pulse.PrimordialPulse(state, cfg.Treasury)
+		pulse.PrimordialPulseFork(state, cfg.Treasury)
 	}
 
 	// Accumulate any block and uncle rewards
