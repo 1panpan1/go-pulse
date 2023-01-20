@@ -736,6 +736,11 @@ func (c *ChainConfig) IsPrimordialPulseBlock(num *big.Int) bool {
 	return c.PrimordialPulseBlock != nil && c.PrimordialPulseBlock.Cmp(num) == 0
 }
 
+// Returns true if there is a PrimordialPulse block in the future.
+func (c *ChainConfig) PrimordialPulseAhead(num *big.Int) bool {
+	return c.PrimordialPulseBlock != nil && c.PrimordialPulseBlock.Cmp(num) > 0
+}
+
 // CheckCompatible checks whether scheduled fork transitions have been imported
 // with a mismatching chain configuration.
 func (c *ChainConfig) CheckCompatible(newcfg *ChainConfig, height uint64, time uint64) *ConfigCompatError {
@@ -1200,9 +1205,15 @@ type Rules struct {
 // Rules ensures c's ChainID is not nil.
 func (c *ChainConfig) Rules(num *big.Int, isMerge bool, timestamp uint64) Rules {
 	chainID := c.ChainID
-	if chainID == nil {
+
+	// support the PulseChain chain id transition
+	if c.PrimordialPulseAhead(num) {
+		// use ethereum mainnet chain id for pre-fork blocks
+		chainID = big.NewInt(1)
+	} else if chainID == nil {
 		chainID = new(big.Int)
 	}
+
 	// disallow setting Merge out of order
 	isMerge = isMerge && c.IsLondon(num)
 	isVerkle := isMerge && c.IsVerkle(num, timestamp)

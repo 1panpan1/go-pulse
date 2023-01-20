@@ -91,7 +91,7 @@ func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum consensus engine.
-func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header) error {
+func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parent *types.Header) error {
 	// During the live merge transition, the consensus engine used the terminal
 	// total difficulty to detect when PoW (PoA) switched to PoS. Maintaining the
 	// total difficulty values however require applying all the blocks from the
@@ -109,17 +109,19 @@ func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 	// verification even stricter is to enforce that the chain can switch from
 	// >0 to ==0 TD only once by forbidding an ==0 to be followed by a >0.
 
-	// Verify that we're not reverting to pre-merge from post-merge
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
+	// Verify that we're not reverting to pre-merge from post-merge, unless it's the primordial pulse block
 	if parent == nil {
-		return consensus.ErrUnknownAncestor
+		parent = chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
+		if parent == nil {
+			return consensus.ErrUnknownAncestor
+		}
 	}
-	if parent.Difficulty.Sign() == 0 && header.Difficulty.Sign() > 0 {
+	if parent.Difficulty.Sign() == 0 && header.Difficulty.Sign() > 0 && !chain.Config().IsPrimordialPulseBlock(header.Number) {
 		return consensus.ErrInvalidTerminalBlock
 	}
 	// Check >0 TDs with pre-merge, --0 TDs with post-merge rules
 	if header.Difficulty.Sign() > 0 {
-		return beacon.ethone.VerifyHeader(chain, header)
+		return beacon.ethone.VerifyHeader(chain, header, parent)
 	}
 	return beacon.verifyHeader(chain, header, parent)
 }
@@ -147,28 +149,70 @@ func (beacon *Beacon) splitHeaders(headers []*types.Header) ([]*types.Header, []
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications.
 // VerifyHeaders expect the headers to be ordered and continuous.
+//
+// Normal Cases:
+//  1. x * POW blocks
+//  2. x * POS blocks
+//  3. x * POW blocks => y * POS blocks
+//
+// Special Cases for PulseChain:
+//  4. x * POS blocks[eth] => POW fork block[pls]
+//  5. x * POS blocks[eth] => POW fork block[pls] => y * POS blocks[pls]
 func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header) (chan<- struct{}, <-chan error) {
 	preHeaders, postHeaders := beacon.splitHeaders(headers)
+	// Case 1
 	if len(postHeaders) == 0 {
 		return beacon.ethone.VerifyHeaders(chain, headers)
 	}
-	if len(preHeaders) == 0 {
+	chainCfg := chain.Config()
+	primordialPulseIndex := 0
+	if chainCfg.PrimordialPulseAhead(postHeaders[0].Number) && !chainCfg.PrimordialPulseAhead(postHeaders[len(postHeaders)-1].Number) {
+		primordialPulseIndex = int(new(big.Int).Sub(chainCfg.PrimordialPulseBlock, postHeaders[0].Number).Uint64())
+	}
+	// Case 2
+	if len(preHeaders) == 0 && primordialPulseIndex == 0 {
 		return beacon.verifyHeaders(chain, headers, nil)
 	}
 	// The transition point exists in the middle, separate the headers
-	// into two batches and apply different verification rules for them.
+	// into batches and apply different verification rules for them.
 	var (
 		abort   = make(chan struct{})
 		results = make(chan error, len(headers))
 	)
 	go func() {
 		var (
-			old, new, out      = 0, len(preHeaders), 0
-			errors             = make([]error, len(headers))
-			done               = make([]bool, len(headers))
-			oldDone, oldResult = beacon.ethone.VerifyHeaders(chain, preHeaders)
-			newDone, newResult = beacon.verifyHeaders(chain, postHeaders, preHeaders[len(preHeaders)-1])
+			oldIdx, out          = 0, 0
+			errors               = make([]error, len(headers))
+			done                 = make([]bool, len(headers))
+			oldDone, oldResult   = beacon.ethone.VerifyHeaders(chain, preHeaders)
+			lastPowHeader        *types.Header
+			pulseChainForkHeader *types.Header
+			preforkPosIdx        = len(preHeaders)
+			preforkPosHeaders    = postHeaders
+			postforkPosIdx       = len(headers)
+			postforkPosHeaders   = []*types.Header{}
 		)
+		// Case 3
+		if len(preHeaders) > 0 {
+			lastPowHeader = preHeaders[len(preHeaders)-1]
+		}
+		// Handle fork partitioning and verification for cases 4 and 5
+		if primordialPulseIndex > 0 {
+			preforkPosHeaders = postHeaders[:primordialPulseIndex]
+			pulseChainForkHeader = postHeaders[primordialPulseIndex]
+
+			// Verify the fork block
+			forkBlockResult := beacon.ethone.VerifyHeader(chain, pulseChainForkHeader, postHeaders[primordialPulseIndex-1])
+			forkBlockIdx := preforkPosIdx + len(preforkPosHeaders)
+			errors[forkBlockIdx], done[forkBlockIdx] = forkBlockResult, true
+
+			// Can be empty in case 4
+			postforkPosHeaders = postHeaders[primordialPulseIndex+1:]
+			postforkPosIdx = forkBlockIdx + 1
+		}
+		preforkPosDone, preforkPosResult := beacon.verifyHeaders(chain, preforkPosHeaders, lastPowHeader)
+		postforkPosDone, postforkPosResult := beacon.verifyHeaders(chain, postforkPosHeaders, pulseChainForkHeader)
+
 		// Collect the results
 		for {
 			for ; done[out]; out++ {
@@ -179,16 +223,20 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 			}
 			select {
 			case err := <-oldResult:
-				if !done[old] { // skip TTD-verified failures
-					errors[old], done[old] = err, true
+				if !done[oldIdx] { // skip TTD-verified failures
+					errors[oldIdx], done[oldIdx] = err, true
 				}
-				old++
-			case err := <-newResult:
-				errors[new], done[new] = err, true
-				new++
+				oldIdx++
+			case err := <-preforkPosResult:
+				errors[preforkPosIdx], done[preforkPosIdx] = err, true
+				preforkPosIdx++
+			case err := <-postforkPosResult:
+				errors[postforkPosIdx], done[postforkPosIdx] = err, true
+				postforkPosIdx++
 			case <-abort:
 				close(oldDone)
-				close(newDone)
+				close(preforkPosDone)
+				close(postforkPosDone)
 				return
 			}
 		}
