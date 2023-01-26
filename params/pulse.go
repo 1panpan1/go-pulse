@@ -62,7 +62,7 @@ var (
 		GrayGlacierBlock:        big.NewInt(15_050_000),
 		TerminalTotalDifficulty: PulseChainTerminalTotalDifficulty,
 		Ethash:                  new(EthashConfig),
-		PrimordialPulseBlock:    big.NewInt(15_700_000), // TODO: UPDATE FORK BLOCK
+		PrimordialPulseBlock:    big.NewInt(16_492_700),
 		Treasury:                testnetTreasury(),
 	}
 )
@@ -72,7 +72,7 @@ func testnetTreasury() *Treasury {
 	pulseChainTestnetTreasuryBalance.UnmarshalText([]byte("0xC9F2C9CD04674EDEA40000000"))
 
 	return &Treasury{
-		Addr:    "0xceB59257450820132aB274ED61C49E5FD96E8868",
+		Addr:    "0xA592ED65885bcbCeb30442F4902a0D1Cf3AcB8fC",
 		Balance: &pulseChainTestnetTreasuryBalance,
 	}
 }
