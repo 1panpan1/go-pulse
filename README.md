@@ -87,19 +87,19 @@ This command will:
    This tool is optional and if you leave it out you can always attach it to an already running
    `geth` instance with `geth attach`.
 
-### Full node on PulseChain Testnet
+### Full node on PulseChain Testnet V3
 
-For development and testing, you can connect to the PulseChain Testnet:
+For development and testing, you can connect to the PulseChain Testnet V3:
 
 ```shell
-$ geth --pulsechain-testnet console
+$ geth --pulsechain-testnet-v3 console
 ```
 
 The `console` subcommand works the same way as on mainnet and is equally useful for testing.
 
-Specifying the `--pulsechain-testnet` flag will configure your `geth` instance for the testnet:
+Specifying the `--pulsechain-testnet-v3` flag will configure your `geth` instance for the testnet:
 
- * Connect to the PulseChain Testnet, which uses different P2P bootnodes, different network ID and a different fork block
+ * Connect to the PulseChain Testnet V3, which uses different P2P bootnodes, different network ID and a different fork block
  * Use a separate data directory for testnet data to keep it isolated from mainnet.
 
 *Note: Always use separate accounts for testnet and mainnet. Go-Pulse will correctly separate the two networks and will not make accounts available between them.*
@@ -146,11 +146,11 @@ docker run -d --name pulsechain-mainnet-node -v /path/to/pulsechain/data:/root \
            registry.gitlab.com/pulsechaincom/go-pulse --pulsechain
 ```
 
-**PulseChain Testnet:**
+**PulseChain Testnet V3:**
 ```shell
 docker run -d --name pulsechain-testnet-node -v /path/to/pulsechain-testnet/data:/root \
            -p 8545:8545 -p 30303:30303 \
-           registry.gitlab.com/pulsechaincom/go-pulse --pulsechain-testnet
+           registry.gitlab.com/pulsechaincom/go-pulse --pulsechain-testnet-v3
 ```
 
 This will start `geth` in snap-sync mode and create a persistent volume for
