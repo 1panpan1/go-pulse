@@ -702,7 +702,7 @@ func TestEstimateGas(t *testing.T) {
 				Value: (*hexutil.Big)(big.NewInt(1000)),
 			},
 			expectErr: nil,
-			want:      21000,
+			want:      25200,
 		},
 		// simple transfer with insufficient funds on latest block
 		{
@@ -713,14 +713,14 @@ func TestEstimateGas(t *testing.T) {
 				Value: (*hexutil.Big)(big.NewInt(1000)),
 			},
 			expectErr: core.ErrInsufficientFunds,
-			want:      21000,
+			want:      25200,
 		},
 		// empty create
 		{
 			blockNumber: rpc.LatestBlockNumber,
 			call:        TransactionArgs{},
 			expectErr:   nil,
-			want:        53000,
+			want:        64551,
 		},
 		{
 			blockNumber: rpc.LatestBlockNumber,
@@ -729,7 +729,7 @@ func TestEstimateGas(t *testing.T) {
 				randomAccounts[0].addr: override.OverrideAccount{Balance: newRPCBalance(new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Ether)))},
 			},
 			expectErr: nil,
-			want:      53000,
+			want:      64551,
 		},
 		{
 			blockNumber: rpc.LatestBlockNumber,
@@ -761,7 +761,7 @@ func TestEstimateGas(t *testing.T) {
 				GasPrice: (*hexutil.Big)(big.NewInt(1_000_000_000)), // Legacy as pricing
 			},
 			expectErr: nil,
-			want:      67617,
+			want:      82171,
 		},
 		{
 			blockNumber: rpc.LatestBlockNumber,
@@ -771,7 +771,7 @@ func TestEstimateGas(t *testing.T) {
 				MaxFeePerGas: (*hexutil.Big)(big.NewInt(1_000_000_000)), // 1559 gas pricing
 			},
 			expectErr: nil,
-			want:      67617,
+			want:      82171,
 		},
 		{
 			blockNumber: rpc.LatestBlockNumber,
@@ -782,7 +782,7 @@ func TestEstimateGas(t *testing.T) {
 				MaxFeePerGas: nil, // No 1559 gas pricing
 			},
 			expectErr: nil,
-			want:      67595,
+			want:      82144,
 		},
 		// Blobs should have no effect on gas estimate
 		{
@@ -794,7 +794,7 @@ func TestEstimateGas(t *testing.T) {
 				BlobHashes: []common.Hash{{0x01, 0x22}},
 				BlobFeeCap: (*hexutil.Big)(big.NewInt(1)),
 			},
-			want: 21000,
+			want: 25200,
 		},
 		// // SPDX-License-Identifier: GPL-3.0
 		//pragma solidity >=0.8.2 <0.9.0;
@@ -851,7 +851,7 @@ func TestEstimateGas(t *testing.T) {
 				To:    &accounts[2].addr,
 				Value: (*hexutil.Big)(big.NewInt(1)),
 			},
-			want: 21000,
+			want: 25200,
 		},
 		// Should be able to send as EIP-7702 delegated account.
 		{
@@ -861,7 +861,7 @@ func TestEstimateGas(t *testing.T) {
 				To:    &accounts[1].addr,
 				Value: (*hexutil.Big)(big.NewInt(1)),
 			},
-			want: 21000,
+			want: 25200,
 		},
 		// Should be able to estimate SetCodeTx.
 		{
@@ -872,7 +872,7 @@ func TestEstimateGas(t *testing.T) {
 				Value:             (*hexutil.Big)(big.NewInt(0)),
 				AuthorizationList: []types.SetCodeAuthorization{setCodeAuthorization},
 			},
-			want: 46000,
+			want: 55200,
 		},
 		// Should retrieve the code of 0xef0001 || accounts[0].addr and return an invalid opcode error.
 		{
@@ -2598,7 +2598,7 @@ func TestSignTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expect := `{"type":"0x2","chainId":"0x1","nonce":"0x0","to":"0x703c4b2bd70c169f5717101caee543299fc946c7","gas":"0x5208","gasPrice":null,"maxPriorityFeePerGas":"0x0","maxFeePerGas":"0x684ee180","value":"0x1","input":"0x","accessList":[],"v":"0x0","r":"0x8fabeb142d585dd9247f459f7e6fe77e2520c88d50ba5d220da1533cea8b34e1","s":"0x582dd68b21aef36ba23f34e49607329c20d981d30404daf749077f5606785ce7","yParity":"0x0","hash":"0x93927839207cfbec395da84b8a2bc38b7b65d2cb2819e9fef1f091f5b1d4cc8f"}`
+	expect := `{"type":"0x2","chainId":"0x1","nonce":"0x0","to":"0x703c4b2bd70c169f5717101caee543299fc946c7","gas":"0x6270","gasPrice":null,"maxPriorityFeePerGas":"0x0","maxFeePerGas":"0x684ee180","value":"0x1","input":"0x","accessList":[],"v":"0x0","r":"0xecde8d8a090f99fa06adcb5dacd9ca415cd31b002355b8285639e78f227fe56e","s":"0x91b92ca049b354ab795430e0d465d9901ef34fdb12a28a598be126441761dc6","yParity":"0x0","hash":"0x79368920659e6e4a5b1fca57cbe28657b4263fa447a8412bdb474347447d2ceb"}`
 	if !bytes.Equal(tx, []byte(expect)) {
 		t.Errorf("result mismatch. Have:\n%s\nWant:\n%s\n", tx, expect)
 	}
@@ -3796,8 +3796,8 @@ func TestEstimateGasWithMovePrecompile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EstimateGas failed: %v", err)
 	}
-	if gas != 21366 {
-		t.Fatalf("mismatched gas: %d, want 21366", gas)
+	if gas != 25639 {
+		t.Fatalf("mismatched gas: %d, want 25639", gas)
 	}
 }
 
