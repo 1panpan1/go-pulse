@@ -152,9 +152,9 @@ var (
 		Name:  "pulsechain",
 		Usage: "PulseChain mainnet",
 	}
-	PulseChainTestnetV3Flag = &cli.BoolFlag{
-		Name:  "pulsechain-testnet-v3",
-		Usage: "PulseChain Testnet V3: pre-configured proof-of-stake test network",
+	PulseChainTestnetV4Flag = &cli.BoolFlag{
+		Name:  "pulsechain-testnet-v4",
+		Usage: "PulseChain Testnet V4: pre-configured proof-of-stake test network",
 	}
 	SepoliaFlag = &cli.BoolFlag{
 		Name:     "sepolia",
@@ -979,7 +979,7 @@ Please note that --` + MetricsHTTPFlag.Name + ` must be set to start the server.
 var (
 	// TestnetFlags is the flag group of all built-in supported testnets.
 	TestnetFlags = []cli.Flag{
-		PulseChainTestnetV3Flag,
+		PulseChainTestnetV4Flag,
 		SepoliaFlag,
 		HoleskyFlag,
 		HoodiFlag,
@@ -1016,8 +1016,8 @@ func MakeDataDir(ctx *cli.Context) string {
 		if ctx.Bool(PulseChainFlag.Name) {
 			return filepath.Join(path, "pulsechain")
 		}
-		if ctx.Bool(PulseChainTestnetV3Flag.Name) {
-			return filepath.Join(path, "pulsechain-testnet-v3")
+		if ctx.Bool(PulseChainTestnetV4Flag.Name) {
+			return filepath.Join(path, "pulsechain-testnet-v4")
 		}
 		if ctx.Bool(SepoliaFlag.Name) {
 			return filepath.Join(path, "sepolia")
@@ -1086,8 +1086,8 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		switch {
 		case ctx.Bool(PulseChainFlag.Name):
 			urls = params.PulseChainBootnodes
-		case ctx.Bool(PulseChainTestnetV3Flag.Name):
-			urls = params.PulseChainTestnetV3Bootnodes
+		case ctx.Bool(PulseChainTestnetV4Flag.Name):
+			urls = params.PulseChainTestnetV4Bootnodes
 		case ctx.Bool(HoleskyFlag.Name):
 			urls = params.HoleskyBootnodes
 		case ctx.Bool(SepoliaFlag.Name):
@@ -1454,8 +1454,8 @@ func SetDataDir(ctx *cli.Context, cfg *node.Config) {
 		cfg.DataDir = "" // unless explicitly requested, use memory databases
 	case ctx.Bool(PulseChainFlag.Name) && cfg.DataDir == node.DefaultDataDir():
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "pulsechain")
-	case ctx.Bool(PulseChainTestnetV3Flag.Name) && cfg.DataDir == node.DefaultDataDir():
-		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "pulsechain-testnet-v3")
+	case ctx.Bool(PulseChainTestnetV4Flag.Name) && cfg.DataDir == node.DefaultDataDir():
+		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "pulsechain-testnet-v4")
 	case ctx.Bool(SepoliaFlag.Name) && cfg.DataDir == node.DefaultDataDir():
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "sepolia")
 	case ctx.Bool(HoleskyFlag.Name) && cfg.DataDir == node.DefaultDataDir():
@@ -1588,7 +1588,7 @@ func setRequiredBlocks(ctx *cli.Context, cfg *ethconfig.Config) {
 // SetEthConfig applies eth-related command line flags to the config.
 func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	// Avoid conflicting network flags, don't allow network id override on preset networks
-	flags.CheckExclusive(ctx, MainnetFlag, PulseChainFlag, PulseChainTestnetV3Flag, DeveloperFlag, SepoliaFlag, HoleskyFlag, HoodiFlag, NetworkIdFlag)
+	flags.CheckExclusive(ctx, MainnetFlag, PulseChainFlag, PulseChainTestnetV4Flag, DeveloperFlag, SepoliaFlag, HoleskyFlag, HoodiFlag, NetworkIdFlag)
 	flags.CheckExclusive(ctx, DeveloperFlag, ExternalSignerFlag) // Can't use both ephemeral unlocked and external signer
 
 	// Set configurations from CLI flags
@@ -1764,11 +1764,11 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 		}
 		cfg.Genesis = core.DefaultPulseChainGenesisBlock()
 		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
-	case ctx.Bool(PulseChainTestnetV3Flag.Name):
+	case ctx.Bool(PulseChainTestnetV4Flag.Name):
 		if !ctx.IsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 942
+			cfg.NetworkId = 943
 		}
-		cfg.Genesis = core.DefaultPulseChainTestnetV3GenesisBlock()
+		cfg.Genesis = core.DefaultPulseChainTestnetV4GenesisBlock()
 		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
 	case ctx.Bool(HoleskyFlag.Name):
 		cfg.NetworkId = 17000
@@ -2197,8 +2197,8 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 		genesis = core.DefaultGenesisBlock()
 	case ctx.Bool(PulseChainFlag.Name):
 		genesis = core.DefaultPulseChainGenesisBlock()
-	case ctx.Bool(PulseChainTestnetV3Flag.Name):
-		genesis = core.DefaultPulseChainTestnetV3GenesisBlock()
+	case ctx.Bool(PulseChainTestnetV4Flag.Name):
+		genesis = core.DefaultPulseChainTestnetV4GenesisBlock()
 	case ctx.Bool(HoleskyFlag.Name):
 		genesis = core.DefaultHoleskyGenesisBlock()
 	case ctx.Bool(SepoliaFlag.Name):
