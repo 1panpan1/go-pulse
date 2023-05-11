@@ -40,7 +40,8 @@ var (
 		GrayGlacierBlock:        big.NewInt(15_050_000),
 		TerminalTotalDifficulty: PulseChainTerminalTotalDifficulty,
 		Ethash:                  new(EthashConfig),
-		PrimordialPulseBlock:    big.NewInt(15_700_000), // TODO: UPDATE FORK BLOCK
+		PrimordialPulseBlock:    big.NewInt(17_233_000),
+		ShanghaiTime:            newUint64(1683786515),
 	}
 
 	PulseChainTestnetV4Config = &ChainConfig{
