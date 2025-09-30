@@ -37,6 +37,9 @@ var Semantic = fmt.Sprintf("%d.%d.%d", version.Major, version.Minor, version.Pat
 // WithMeta holds the textual version string including the metadata.
 var WithMeta = func() string {
 	v := Semantic
+	if version.Variant != "" {
+		v += "-" + version.Variant
+	}
 	if version.Meta != "" {
 		v += "-" + version.Meta
 	}
@@ -59,6 +62,9 @@ func WithCommit(gitCommit, gitDate string) string {
 // releases.
 func Archive(gitCommit string) string {
 	vsn := Semantic
+	if version.Variant != "" {
+		vsn += "-" + version.Variant
+	}
 	if version.Meta != "stable" {
 		vsn += "-" + version.Meta
 	}
