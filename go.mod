@@ -1,4 +1,4 @@
-module github.com/ethereum/go-ethereum
+module github.com/1panpan1/go-pulse
 
 go 1.23.0
 
